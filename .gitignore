@@ -1,0 +1,32 @@
+# Python and local environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.env
+.env.*
+!.env.example
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local SDKs, browser drivers, build intermediates, and signing keys
+.test-tools/
+mobile/build/
+mobile/.signing/
+dist/
+*.idsig
+
+# Generated screenshots and verification outputs
+test-artifacts/
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+*.swp
