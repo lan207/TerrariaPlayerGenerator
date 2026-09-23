@@ -43,12 +43,3 @@ python TrueTerrariaGenerator.py --action shoot --aim-angle -120 --output test-ar
 自定义姿势支持头部、身体、腿部和全身分别旋转、X/Y 偏移，并保留双臂设置。装备与饰品随所属部位变换；每个变换提供重置按钮。时间轴帧保存这些参数，预览和导出会按变换后的范围扩展画布。
 
 Windows 双击 `BuildAndroid.bat` 构建安卓安装包，输出为 `dist/PlayerStudio-android.apk`。GitHub Actions 会构建 APK 并提供下载 artifact；推送 `v*` 标签时也会附加到 GitHub Release。详见 [mobile/README.md](mobile/README.md)。
-=======
-```
-
-验证脚本位于 `tests/ui/` 与 `tests/mobile/`，截图和验证产物统一保存到 `test-artifacts/`。运行 `python -m unittest discover -s tests -v`、`python tests/ui/verify_studio_ui.py`、`python tests/ui/verify_dyes_ui.py`、`python tests/ui/verify_aim_ui.py`。
-
-自定义姿势支持头部、身体、腿部和全身分别旋转、X/Y 偏移，并保留双臂设置。装备与饰品随所属部位变换；每个变换提供重置按钮。时间轴帧保存这些参数，预览和导出会按变换后的范围扩展画布。
-
-Windows 双击 `BuildAndroid.bat` 构建安卓安装包，输出为 `dist/PlayerStudio-android.apk`。GitHub Actions 会构建 APK 并提供下载 artifact；推送 `v*` 标签时也会附加到 GitHub Release。详见 [mobile/README.md](mobile/README.md)。
->>>>>>> 2eeed83e21770a7bf58dc5020ab92c4d3726ff1e
