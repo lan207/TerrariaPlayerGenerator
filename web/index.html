@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Player Studio · 泰拉人物工坊</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%23a7e6bd' d='M4 28V16h12V4h12v24z'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/advanced.css"><script src="/aim.js" defer></script><script src="/sequence.js" defer></script><script src="/app.js" defer></script>
+</head>
+<body>
+<header class="topbar"><a class="brand" href="/"><span class="brand-icon">▟</span> PLAYER <b>STUDIO</b><span class="badge">TERRARIA</span></a><span class="local"><i></i> 本地人物工坊</span></header>
+<main>
+  <div class="intro"><div><p class="eyebrow">从一个像素，开始你的冒险</p><h1>创造属于你的角色<span>。</span></h1><p class="muted">挑选外观，赋予色彩，再让角色动起来。</p></div><div class="spec"><strong>40 × 56</strong><span>原生像素 · 透明导出</span></div></div>
+  <section class="editor panel" aria-labelledby="editor-title">
+    <div class="section-head"><h2 id="editor-title"><span class="step">01</span> 基础人物</h2><button id="reset" class="quiet">↺ 恢复默认</button></div>
+    <div class="editor-grid">
+      <div class="appearance">
+        <div id="appearance-tabs" class="tabs appearance-tabs" hidden role="tablist" aria-label="编辑类别"><button id="base-tab" type="button" role="tab" aria-controls="base-options">基础外观</button><button id="gear-tab" type="button" role="tab" aria-controls="equipment-panel">装备时装</button><button id="accessory-tab" type="button" role="tab" aria-controls="accessory-panel" hidden>饰品</button></div>
+        <div id="base-options"><p class="small-title">挑选部位 <span>← → 切换 / 左右滑动</span></p><div id="selectors"></div>
+        <label class="check"><input type="checkbox" id="alt-hair"> 使用帽下发型 <span>Alt</span></label>
+        <p class="hint">身体选项包含体型和上衣；裤装、鞋子可独立搭配。</p>
+        </div>
+        <section id="equipment-panel" class="equipment-panel" hidden aria-labelledby="equipment-title">
+          <div class="small-title"><span id="equipment-title">装备 / 时装</span><button id="clear-equipment" class="quiet" type="button">全部卸下</button></div>
+          <div id="equipment-slots"></div>
+          <p class="hint" id="equipment-note">各部位可独立搭配和染色，白色保留原色。</p>
+          <p class="hint">染色叠加于原贴图，保留明暗和透明度。配套衣摆与披风跟随上身颜色。</p>
+        </section>
+        <section id="accessory-panel" hidden>
+          <label class="accessory-label" for="accessory-slot">饰品部位</label><select id="accessory-slot"></select>
+          <input id="accessory-search" type="search" placeholder="搜索名称 / 编号" aria-label="搜索饰品">
+          <select id="accessory-item" aria-label="选择饰品"></select>
+          <label class="check"><input id="auto-capes" type="checkbox" checked> 自动显示装备配套披风</label>
+          <p class="small-title">已选饰品 <button id="accessory-clear" class="quiet" type="button">全部卸下</button></p>
+          <div id="accessory-equipped"></div><p id="accessory-textures" class="texture-name"></p>
+          <p class="hint">披风自动补齐同款前后部件，并跟随所选部位染色；另一侧可单独搭配或改色。装备自带披风跟随上身颜色。</p>
+        </section>
+        <label class="use-style">使用动作 <select id="use-style"><option value="1">挥动 / 工具</option><option value="2">喝药水</option><option value="3">刺击</option><option value="4">举起物品</option><option value="5">射击姿势</option><option value="6">魔法施放</option><option value="7">投掷</option><option value="11">食用</option><option value="12">高尔夫</option><option value="13">挥动（13）</option></select></label>
+      </div>
+      <div class="preview-col">
+        <div class="stage checker" id="base-stage"><div class="stage-label"><span class="dot"></span> 站立 · 第一帧</div><img id="base-image" alt="基础人物实时预览" draggable="false"><span class="stage-foot">PIXEL PERFECT</span></div>
+        <div class="preview-tools"><div class="segmented" aria-label="人物朝向"><button class="active" data-direction="1">朝右 →</button><button data-direction="-1">← 朝左</button></div><span id="preview-state" class="muted">载入素材…</span></div>
+      </div>
+      <aside class="palette"><p class="small-title">贴图与配色 <span>点击色块取色</span></p><div id="colors"></div></aside>
+    </div>
+    <div class="confirm-bar"><div><strong>外观准备好了？</strong><p>预览动作，再编排自己的动画时间轴。</p></div><button id="generate" class="primary" disabled>确认人物 · 生成动画 <span>↗</span></button></div>
+  </section>
+  <section class="panel animation" aria-labelledby="animation-title">
+    <div class="section-head"><h2 id="animation-title"><span class="step">02</span> 动画工作台</h2><span id="animation-state" class="badge">等待生成</span></div>
+    <div id="empty-state"><div class="empty-icon">▧</div><h3>让你的角色动起来</h3><p>确认上方基础人物后，在这里预览并导出动作。</p></div>
+    <div id="animation-content" hidden>
+      <div class="animation-grid"><div class="motion-preview checker"><img id="motion-image" alt="当前动画帧" draggable="false"><i id="shoot-ray" hidden aria-hidden="true"></i><span id="frame-label"></span></div>
+        <div class="timeline"><div id="action-tabs" class="tabs" role="tablist" aria-label="动作类型"></div>
+          <div id="shoot-controls" hidden><label>瞄准角度 <input id="shoot-angle" type="number" min="-180" max="180" step="0.1" value="0"> °</label><input id="shoot-range" type="range" min="-180" max="180" step="0.1" value="0" aria-label="瞄准角度"><label class="check"><input id="shoot-follow" type="checkbox" checked> 在预览框中跟随鼠标 / 触摸瞄准</label><p id="shoot-state" class="hint"></p><p class="hint">0° 向右，−90° 向上，90° 向下，±180° 向左。移出预览框后保持当前瞄准；辅助线不会导出。</p></div>
+          <div class="playback"><button id="previous" class="icon-button" aria-label="上一帧">◂</button><button id="play" class="primary compact">▶ 播放</button><button id="next" class="icon-button" aria-label="下一帧">▸</button><label class="interval">切换间隔 <input id="interval" type="number" min="20" max="2000" step="10" value="100"> ms</label></div>
+          <input id="scrub" type="range" min="0" max="0" value="0" aria-label="动画帧位置">
+          <div id="frames" class="frames" aria-label="帧选择"></div><p id="action-note" class="hint"></p>
+        </div>
+      </div>
+      <section id="sequence-editor" hidden></section>
+      <div class="export-bar"><label>导出倍率 <select id="export-scale"><option value="1">1× 原始像素</option><option value="2">2×</option><option value="4">4×</option><option value="8">8×</option></select></label><div class="exports"><button data-export="frame">↓ 导出此帧 <span>PNG</span></button><button data-export="sheet">↓ 导出帧图 <span>PNG</span></button><button data-export="gif" class="accent">↓ 导出 GIF</button></div></div>
+      <p class="export-hint">导出当前选中的动作。帧图为横向排列，GIF 循环播放；透明背景与像素边缘保持不变。</p>
+    </div>
+  </section>
+  <footer><span>PLAYER STUDIO <b> / </b> 你的下一个冒险者</span><span>素材来自本地 Assets · 无需上传</span></footer>
+</main><div id="toast" role="status" aria-live="polite" hidden></div>
+</body></html>
