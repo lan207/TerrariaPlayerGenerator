@@ -1,9 +1,39 @@
-/* Pixel-exact nearest-neighbour affine rendering, shared coordinate conventions
- * with transforms.py. Each layer is sampled once after composing its transforms. */
+/* RotSprite-core affine rendering, shared with transforms.py: Scale2x to 8x,
+ * nearest rotation and reduction. Quarter turns retain the original samples. */
 'use strict';
 window.AdvancedPlayer = ({canvas,load,texture,basic}) => {
   const cat=OFFLINE_CATALOG, identity=[1,0,0,1,0,0];
   const mul=([A,B,C,D,E,F],[a,b,c,d,e,f])=>[A*a+C*b,B*a+D*b,A*c+C*d,B*c+D*d,A*e+C*f+E,B*e+D*f+F];
+  const needsRotSprite=m=>m.slice(0,4).some(v=>Math.abs(v-Math.round(v))>1e-12),scaledCache=new Map();
+  function blend(data,i,pixels,s){
+    const alpha=pixels[s+3];if(!alpha)return;
+    const total=alpha+data[i+3]*(255-alpha)/255;
+    for(let k=0;k<3;k++)data[i+k]=Math.round((pixels[s+k]*alpha+data[i+k]*data[i+3]*(255-alpha)/255)/total);
+    data[i+3]=Math.round(total);
+  }
+  function scale2x({pixels,w,h}){
+    const src=new Uint32Array(pixels.buffer,pixels.byteOffset,w*h),out=new Uint32Array(w*h*4),width=w*2;
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+      const e=src[y*w+x],b=src[Math.max(0,y-1)*w+x],d=src[y*w+Math.max(0,x-1)],f=src[y*w+Math.min(w-1,x+1)],hh=src[Math.min(h-1,y+1)*w+x],i=y*2*width+x*2;
+      if(b!==hh&&d!==f){out[i]=d===b?d:e;out[i+1]=b===f?f:e;out[i+width]=d===hh?d:e;out[i+width+1]=hh===f?f:e;}
+      else out[i]=out[i+1]=out[i+width]=out[i+width+1]=e;
+    }
+    return {pixels:new Uint8ClampedArray(out.buffer),w:width,h:h*2};
+  }
+  function rotSpriteSource(layer){
+    // Cache by visible source pixels, independent of rotation, for scrubbing.
+    let key=layer.w+','+layer.h+':';
+    for(let i=0;i<layer.pixels.length;i+=8192)key+=String.fromCharCode(...layer.pixels.subarray(i,i+8192));
+    if(scaledCache.has(key)){const hit=scaledCache.get(key);scaledCache.delete(key);scaledCache.set(key,hit);return hit;}
+    let scaled=layer;for(let i=0;i<3;i++)scaled=scale2x(scaled);
+    scaledCache.set(key,scaled);if(scaledCache.size>24)scaledCache.delete(scaledCache.keys().next().value);
+    return scaled;
+  }
+  function mergeLayers(first,second){
+    const w=Math.max(first.w,second.w),h=Math.max(first.h,second.h),pixels=new Uint8ClampedArray(w*h*4);
+    for(const layer of [first,second])for(let y=0;y<layer.h;y++)for(let x=0;x<layer.w;x++)blend(pixels,(y*w+x)*4,layer.pixels,(y*layer.w+x)*4);
+    return {...second,pixels,w,h,box:[Math.min(first.box[0],second.box[0]),Math.min(first.box[1],second.box[1]),Math.max(first.box[2],second.box[2]),Math.max(first.box[3],second.box[3])]};
+  }
   function rotate(v={},[x,y]){const t=(v.angle||0)*Math.PI/180,c=+Math.cos(t).toFixed(14),s=+Math.sin(t).toFixed(14);return [c,s,-s,c,x-c*x+s*y+(v.x||0),y-s*x-c*y+(v.y||0)];}
   function matrix(pose,part,arm,bob,direction){
     let m=identity;const data=pose?.[arm+'_arm'];
@@ -53,20 +83,22 @@ window.AdvancedPlayer = ({canvas,load,texture,basic}) => {
       const [a,b,c,d,e,f]=m,points=[];for(const x of [x0,x1])for(const y of [y0,y1])points.push([a*x+c*y+e,b*x+d*y+f]);
       const box=[Math.floor(Math.min(...points.map(p=>p[0]))),Math.floor(Math.min(...points.map(p=>p[1]))),Math.ceil(Math.max(...points.map(p=>p[0]))),Math.ceil(Math.max(...points.map(p=>p[1])))];
       left=Math.min(left,box[0]);top=Math.min(top,box[1]);right=Math.max(right,box[2]);bottom=Math.max(bottom,box[3]);
-      layers.push({pixels,w,h,m,box});
+      const preparedLayer={pixels,w,h,m,box},previous=layers[layers.length-1];
+      if(previous&&needsRotSprite(m)&&m.every((v,i)=>v===previous.m[i]))layers[layers.length-1]=mergeLayers(previous,preparedLayer);
+      else layers.push(preparedLayer);
     }
     const transformed=pose&&(['head','body','legs','whole'].some(part=>['angle','x','y'].some(k=>pose[part+'_transform']?.[k]))||['front','back'].some(s=>pose[s+'_arm'].angle));
     if(!transformed){left=0;top=0;right=64;bottom=plan.height;}
     const out=canvas(right-left,bottom-top),data=new Uint8ClampedArray(out.width*out.height*4);
-    for(const {pixels,w,h,m:[a,b,c,d,e,f],box} of layers){
+    for(const layer of layers){
+      const {m:[a,b,c,d,e,f],box}=layer,rotated=needsRotSprite(layer.m),factor=rotated?8:1;
+      const {pixels,w,h}=rotated?rotSpriteSource(layer):layer;
       const det=a*d-b*c;
       for(let y=Math.max(top,box[1]);y<Math.min(bottom,box[3]);y++)for(let x=Math.max(left,box[0]);x<Math.min(right,box[2]);x++){
-        const px=x+.5-e,py=y+.5-f,sx=Math.floor((d*px-c*py)/det),sy=Math.floor((-b*px+a*py)/det);
+        const px=x+.5-e,py=y+.5-f,epsilon=rotated?1e-9:0,sx=Math.floor(factor*(d*px-c*py)/det+epsilon),sy=Math.floor(factor*(-b*px+a*py)/det+epsilon);
         if(sx<0||sy<0||sx>=w||sy>=h)continue;
         const s=(sy*w+sx)*4,alpha=pixels[s+3];if(!alpha)continue;
-        const i=((y-top)*out.width+x-left)*4,total=alpha+data[i+3]*(255-alpha)/255;
-        for(let k=0;k<3;k++)data[i+k]=Math.round((pixels[s+k]*alpha+data[i+k]*data[i+3]*(255-alpha)/255)/total);
-        data[i+3]=Math.round(total);
+        blend(data,((y-top)*out.width+x-left)*4,pixels,s);
       }
     }
     out.getContext('2d').putImageData(new ImageData(data,out.width,out.height),0,0);out.origin=[left,top];return out;

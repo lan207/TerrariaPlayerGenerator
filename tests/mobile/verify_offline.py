@@ -1,5 +1,6 @@
 """Compare the independent mobile renderer against Pillow and exercise mobile UI/export."""
 import base64
+from copy import deepcopy
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from io import BytesIO
@@ -71,12 +72,32 @@ def main():
             # equipment and extended whole-body transform bounds.
             parity_cases=[(DEFAULTS|{'armor_head':1,'armor_body':1,'armor_legs':1},None),
                           (DEFAULTS,DEFAULT_POSE|{'whole_transform':{'angle':45,'x':48,'y':-2}})]
+            for angle in (-23,137):
+                for direction in (1,-1):
+                    for stretch in ('full','three_quarters','quarter','none'):
+                        pose=deepcopy(DEFAULT_POSE)
+                        pose['direction']=direction
+                        pose['back_arm'].update(angle=angle,stretch=stretch)
+                        parity_cases.append((DEFAULTS,pose))
+            for variant in (0,4):
+                for armor in (0,1,55):
+                    pose=deepcopy(DEFAULT_POSE)
+                    pose['front_arm']['angle']=-23;pose['back_arm']['angle']=137
+                    pose['body_transform']={'angle':17,'x':2,'y':-3}
+                    pose['head_transform']={'angle':-11,'x':0,'y':0}
+                    pose['legs_transform']={'angle':31,'x':0,'y':0}
+                    pose['whole_transform']={'angle':13,'x':48,'y':-2}
+                    parity_cases.append((DEFAULTS|{'skin_variant':variant,'armor_body':armor,
+                                                  'accessories':{'hand_on':1,'hand_off':1}},pose))
             for character,pose in parity_cases:
                 url=page.evaluate('async ([c,p])=>(await LocalPlayer.compose(c,"idle",0,p)).toDataURL()', [character,pose])
                 actual=Image.open(BytesIO(base64.b64decode(url.split(',')[1]))).convert('RGBA')
                 expected=generator.compose(**configuration(character)[1],**({'pose':pose} if pose else {}))
                 assert actual.size==expected.size,(actual.size,expected.size)
-                assert ImageChops.difference(actual,expected).getbbox() is None,'Equipment/transform render differs from Pillow'
+                if max(hi for lo,hi in ImageChops.difference(actual,expected).getextrema()):
+                    actual.save(out/'rotated-actual.png');expected.save(out/'rotated-expected.png')
+                    print('Rotated deltas:',[(x,y,actual.getpixel((x,y)),expected.getpixel((x,y))) for y in range(actual.height) for x in range(actual.width) if actual.getpixel((x,y))!=expected.getpixel((x,y))][:20],flush=True)
+                    raise AssertionError(('Equipment/RotSprite render differs from Pillow',character,pose))
             page.locator('#generate').click()
             page.locator('#animation-content').wait_for(state='visible')
             page.locator('[data-action=walk]').click()
